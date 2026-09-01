@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07171b" />
+    <title>Biodiesel Process &amp; Quality Analyzer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient-grid"></div>
+    <div class="molecule molecule-a"><i></i><i></i><i></i></div>
+    <div class="molecule molecule-b"><i></i><i></i><i></i></div>
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Biodiesel Analyzer home"><span class="brand-mark">◈</span><span>BD<span>•</span>LAB</span></a>
+      <nav aria-label="Primary navigation">
+        <a class="nav-link active" href="#home">Home</a>
+        <a class="nav-link" href="#simulation">Simulation</a>
+        <a class="nav-link" href="#process">Process</a>
+        <a class="nav-link" href="#quality">Quality</a>
+        <a class="nav-link" href="#analysis">Analysis</a>
+        <a class="nav-link" href="#diagnostics">Diagnostics</a>
+        <a class="nav-link" href="#report">Report</a>
+      </nav>
+      <div class="header-status"><span class="pulse-dot"></span> LAB MODEL v1.0</div>
+    </header>
+
+    <main>
+      <section id="home" class="hero section">
+        <div class="hero-copy">
+          <p class="eyebrow">CHEMICAL ENGINEERING • DIGITAL TWIN</p>
+          <h1>BIODIESEL <span>PROCESS &amp;</span><br />QUALITY ANALYZER</h1>
+          <p class="hero-text">From Feedstock to Fuel — <strong>Simulate, Analyze &amp; Optimize</strong> Biodiesel Production.</p>
+          <p class="hero-note"><span>⊙</span> Educational process model. Calculated and estimated values are never experimental measurements.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#simulation">Start simulation <span>→</span></a>
+            <a class="button button-ghost" href="#quality">Quality analysis</a>
+            <a class="text-link" href="#learn">Learn about biodiesel <span>↓</span></a>
+          </div>
+        </div>
+        <div class="hero-art" aria-label="Animated biodiesel process illustration">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div>
+          <div class="fuel-drop drop-one"></div><div class="fuel-drop drop-two"></div><div class="fuel-drop drop-three"></div>
+          <div class="reaction-core"><div class="core-ring"></div><div class="core-label">FAME<br /><small>OUTPUT</small></div></div>
+          <div class="flow-label flow-oil">OIL</div><div class="flow-label flow-methanol">CH₃OH</div><div class="flow-label flow-fame">BIODIESEL</div>
+          <svg class="hero-lines" viewBox="0 0 500 500" aria-hidden="true"><path d="M74 270 C145 268 162 230 212 230"/><path d="M300 120 C300 165 310 180 302 205"/><path d="M314 280 C365 315 395 325 458 320"/></svg>
+        </div>
+      </section>
+
+      <section id="simulation" class="section application-section">
+        <div class="section-heading">
+          <div><p class="eyebrow">01 / RAW MATERIAL CALCULATOR</p><h2>Build your process run</h2><p>Enter actual setup values. The prefilled values are editable <strong>demo data</strong>, not lab results.</p></div>
+          <div class="data-key"><span class="tag user">USER DATA</span><span class="tag calculated">CALCULATED</span><span class="tag estimated">ESTIMATED</span></div>
+        </div>
+        <div class="demo-banner"><span class="demo-icon">◇</span><div><b>DEMO DATA — Replace with experimental values.</b><small>350 mL oil · 70 mL methanol · 3.5 g NaOH · 58 °C · 60 min</small></div><button id="resetDemo" class="small-button">Reset demo</button></div>
+
+        <form id="simulationForm" class="input-layout">
+          <div class="form-card feedstock-card">
+            <div class="card-title"><span class="step-number">A</span><div><h3>Feedstock / oil</h3><p>User-entered raw-material properties</p></div></div>
+            <label>Oil type<select id="oilType" name="oilType"><option>Used cooking oil</option><option>Soybean oil</option><option>Palm oil</option><option>Sunflower oil</option><option>Canola oil</option><option>Other</option></select></label>
+            <div class="field-grid"><label>Oil quantity <span>mL</span><input id="oilVolume" name="oilVolume" type="number" min="1" step="1" value="350" required /></label><label>Oil density <span>kg/m³</span><input id="oilDensity" name="oilDensity" type="number" min="700" max="1100" step="1" value="910" required /></label><label>FFA <span>%</span><input id="ffa" name="ffa" type="number" min="0" max="25" step="0.1" value="1.0" required /></label><label>Initial moisture <span>%</span><input id="moisture" name="moisture" type="number" min="0" max="10" step="0.01" value="0.10" required /></label></div>
+            <label>Oil temperature <span>°C</span><input id="oilTemperature" name="oilTemperature" type="number" min="0" max="150" step="1" value="25" required /></label>
+          </div>
+          <div class="form-card alcohol-card">
+            <div class="card-title"><span class="step-number">B</span><div><h3>Alcohol</h3><p>Actual charged alcohol</p></div></div>
+            <label>Alcohol type<select id="alcoholType" name="alcoholType"><option value="methanol">Methanol</option><option value="ethanol">Ethanol</option></select></label>
+            <div class="field-grid"><label>Alcohol quantity <span>mL</span><input id="alcoholVolume" name="alcoholVolume" type="number" min="1" step="1" value="70" required /></label><label>Alcohol purity <span>%</span><input id="alcoholPurity" name="alcoholPurity" type="number" min="60" max="100" step="0.1" value="99.0" required /></label></div>
+            <div class="calculated-row"><span>Volume ratio (alcohol : oil)</span><strong id="volumeRatio">1 : 5.0</strong></div>
+            <div class="calculated-row"><span>Calculated molar ratio</span><strong id="molarRatio">4.8 : 1</strong></div>
+          </div>
+          <div class="form-card catalyst-card">
+            <div class="card-title"><span class="step-number">C</span><div><h3>Catalyst</h3><p>Base-catalyzed process input</p></div></div>
+            <label>Catalyst type<select id="catalystType" name="catalystType"><option>NaOH</option><option>KOH</option><option>Sodium methoxide</option></select></label>
+            <div class="field-grid"><label>Catalyst quantity <span>g</span><input id="catalystMass" name="catalystMass" type="number" min="0" step="0.1" value="3.5" required /></label><label>Catalyst concentration <span>%</span><input id="catalystConcentration" name="catalystConcentration" type="number" min="1" max="100" step="1" value="100" required /></label></div>
+            <div class="calculated-row"><span>Calculated catalyst loading</span><strong id="catalystLoading">1.10 wt% oil</strong></div>
+          </div>
+          <div class="form-card conditions-card">
+            <div class="card-title"><span class="step-number">D</span><div><h3>Process conditions</h3><p>Setpoints for this model run</p></div></div>
+            <div class="field-grid conditions-grid"><label>Reaction temperature <span>°C</span><input id="reactionTemperature" name="reactionTemperature" type="number" min="10" max="100" step="1" value="58" required /></label><label>Reaction time <span>min</span><input id="reactionTime" name="reactionTime" type="number" min="1" max="360" step="1" value="60" required /></label><label>Stirring speed <span>RPM</span><input id="stirringSpeed" name="stirringSpeed" type="number" min="0" max="2500" step="10" value="650" required /></label><label>Settling time <span>h</span><input id="settlingTime" name="settlingTime" type="number" min="0" max="72" step="0.5" value="8" required /></label><label>Washing cycles <span>#</span><input id="washingCycles" name="washingCycles" type="number" min="0" max="10" step="1" value="3" required /></label></div>
+          </div>
+          <div class="validation-panel"><div class="validation-title"><span class="status-light yellow" id="validationLight"></span><div><b id="validationHeadline">Input review in progress</b><small>Operating-window checks are advisory, not a substitute for lab SOPs.</small></div></div><ul id="validationList" class="validation-list"></ul></div>
+          <button class="run-button" type="submit"><span class="run-icon">▶</span> RUN BIODIESEL SIMULATION <span class="run-hint">calculate • animate • assess</span></button>
+        </form>
+      </section>
+
+      <section id="process" class="section application-section process-section">
+        <div class="section-heading"><div><p class="eyebrow">02 / PROCESS DIGITAL TWIN</p><h2>Watch the material move</h2><p>Click equipment for operating context. The animation represents the model workflow, not a physical control system.</p></div><div id="simBadge" class="sim-badge"><span class="pulse-dot"></span> Awaiting run</div></div>
+        <div class="live-strip" id="liveStrip">
+          <div><small>OIL</small><b id="liveOil">350 mL</b></div><span>↓</span><div><small>ALCOHOL</small><b id="liveAlcohol">70 mL</b></div><span>↓</span><div><small>CATALYST</small><b id="liveCatalyst">3.5 g</b></div><span>↓</span><div><small>REACTION</small><b id="liveReaction">60 min</b></div><span>↓</span><div><small>SEPARATION</small><b id="liveSettling">8 h</b></div><span>↓</span><div class="result-live"><small>BIODIESEL</small><b id="liveBiodiesel">—</b></div><span>↓</span><div class="result-live"><small>EST. YIELD</small><b id="liveYield">—</b></div>
+        </div>
+        <div class="plant-layout" id="plantLayout">
+          <button class="equipment tank feed" data-equipment="feed"><span class="equipment-icon">▣</span><b>Feed tank</b><small>oil feed</small></button><div class="pipe pipe-feed"><i></i></div>
+          <button class="equipment filter" data-equipment="filter"><span class="equipment-icon">▥</span><b>Filter</b><small>solids removal</small></button><div class="pipe pipe-filter"><i></i></div>
+          <button class="equipment heater" data-equipment="heater"><span class="equipment-icon">♨</span><b>Heater</b><small>preheat</small></button><div class="pipe pipe-heater"><i></i></div>
+          <button class="equipment reactor running" data-equipment="reactor"><span class="stirrer">✣</span><b>Reactor</b><small>transesterification</small><em>58°C</em></button>
+          <button class="equipment methoxide" data-equipment="methoxide"><span class="equipment-icon">⚗</span><b>Methoxide vessel</b><small>alcohol + base</small></button><div class="pipe pipe-methoxide"><i></i></div>
+          <div class="pipe pipe-reactor"><i></i></div><button class="equipment settling" data-equipment="settling"><span class="tank-layers"><i></i><i></i></span><b>Settling tank</b><small>phase split</small></button><div class="pipe pipe-top"><i></i></div><div class="pipe pipe-bottom"><i></i></div>
+          <button class="equipment washing" data-equipment="washing"><span class="equipment-icon">≋</span><b>Wash / dry unit</b><small>purification</small></button><div class="pipe pipe-wash"><i></i></div><button class="equipment storage final" data-equipment="storage"><span class="equipment-icon">◉</span><b>FAME storage</b><small>final biodiesel</small></button>
+          <button class="equipment glycerol" data-equipment="glycerol"><span class="equipment-icon">◒</span><b>Glycerol tank</b><small>by-product</small></button>
+        </div>
+        <div class="process-steps">
+          <article><span>01</span><h3>Feedstock preparation</h3><p>Filter, dewater and preheat oil before base catalysis.</p></article><article><span>02</span><h3>Methoxide preparation</h3><p>Alcohol and base form the active mixture in a controlled system.</p></article><article><span>03</span><h3>Transesterification</h3><p><b>Triglyceride + alcohol → FAME + glycerol</b></p></article><article><span>04</span><h3>Separation</h3><p>FAME-rich upper layer separates from crude glycerol phase.</p></article>
+        </div>
+        <aside id="equipmentPanel" class="equipment-panel" aria-live="polite"><button id="closeEquipment" aria-label="Close equipment details">×</button><p class="eyebrow">EQUIPMENT DETAIL</p><h3 id="equipmentName">Select an item</h3><p id="equipmentPurpose">Click any illustrated unit to view its role, operating parameters, safeguards and common issues.</p><dl id="equipmentDetails"></dl></aside>
+      </section>
+
+      <section id="results" class="section application-section results-section">
+        <div class="section-heading"><div><p class="eyebrow">03 / MODEL OUTPUTS</p><h2>Reaction balance &amp; yield</h2><p>Every output below is labelled by evidence type. Update actual recovery to calculate experimental yield.</p></div><div class="assumption-control"><button class="small-button" id="toggleAssumptions">Show model basis</button></div></div>
+        <div id="assumptionBox" class="assumption-box hidden"><b>Transparent model basis</b><p>Theoretical FAME mass is estimated from oil mass using a 1.005 mass factor. Estimated yield is a bounded screening model using alcohol ratio, catalyst loading, temperature, time, mixing, FFA, moisture and alcohol purity. It is <strong>not a validated kinetic model</strong>. Crude glycerol is shown on a stoichiometric glycerol basis; phase composition requires measurement.</p></div>
+        <div class="metric-grid">
+          <article class="metric-card"><span class="tag calculated">CALCULATED</span><small>Oil mass</small><b id="oilMassOut">318.5 g</b><p>from supplied volume × density</p></article>
+          <article class="metric-card"><span class="tag calculated">CALCULATED</span><small>6:1 alcohol guidance</small><b id="requiredAlcoholOut">88.6 mL</b><p>based on approximate triglyceride MW</p></article>
+          <article class="metric-card"><span class="tag calculated">CALCULATED</span><small>Catalyst guidance</small><b id="requiredCatalystOut">3.19 g</b><p>1.0 wt% oil basis; excludes titration</p></article>
+          <article class="metric-card accent-card"><span class="tag estimated">MODEL ESTIMATE</span><small>Estimated FAME yield</small><b id="estimatedYieldOut">—</b><p>not an experimental yield</p></article>
+          <article class="metric-card accent-card"><span class="tag estimated">MODEL ESTIMATE</span><small>Estimated FAME volume</small><b id="estimatedVolumeOut">—</b><p>using 0.88 g/mL FAME density</p></article>
+          <article class="metric-card"><span class="tag calculated">CALCULATED</span><small>Theoretical FAME</small><b id="theoreticalMassOut">—</b><p>mass basis under stated assumption</p></article>
+          <article class="metric-card"><span class="tag estimated">MODEL ESTIMATE</span><small>Glycerol basis</small><b id="glycerolOut">—</b><p>stoichiometric pure-glycerol equivalent</p></article>
+          <article class="metric-card"><span class="tag estimated">MODEL ESTIMATE</span><small>Methanol recovery / loss</small><b id="methanolOut">—</b><p>separation estimate; verify by assay</p></article>
+          <article class="metric-card"><span class="tag estimated">MODEL ESTIMATE</span><small>Washing water</small><b id="washWaterOut">—</b><p>0.25 × FAME volume × cycles</p></article>
+          <article class="metric-card"><span class="tag estimated">MODEL ESTIMATE</span><small>Soap-risk proxy</small><b id="soapOut">—</b><p>screening only; not a soap assay</p></article>
+        </div>
+        <div class="yield-layout">
+          <div class="yield-input-card"><p class="eyebrow">EXPERIMENTAL YIELD</p><h3>Enter actual recovered biodiesel</h3><label>Recovered biodiesel volume <span>mL</span><input id="actualBiodieselVolume" type="number" min="0" step="0.1" placeholder="Enter measured volume" /></label><p id="experimentalYieldFormula">Experimental yield = measured volume / theoretical volume × 100</p><span class="tag user">USER DATA REQUIRED</span></div>
+          <div class="yield-ring-wrap"><div class="yield-ring" id="yieldRing" style="--progress:0"><div><small>EXPERIMENTAL<br />YIELD</small><strong id="experimentalYieldOut">—</strong><em id="yieldEvidence">No measurement</em></div></div></div>
+          <div class="yield-conclusion"><p class="eyebrow">CONCLUSION PREVIEW</p><h3 id="runConclusion">Run the model to generate a process screening summary.</h3><p id="runConclusionText">Experimental recovery and quality values remain blank until you enter them.</p></div>
+        </div>
+      </section>
+
+      <section id="quality" class="section application-section quality-section">
+        <div class="section-heading"><div><p class="eyebrow">04 / BIODIESEL QUALITY ANALYSIS</p><h2>Measure. Compare. Interpret.</h2><p>Enter only actual analytical results. Reference targets and specification values are displayed separately with method context.</p></div><div class="source-note">Specifications: indicative EN 14214 / ASTM D6751 screening values. Confirm the applicable revision and method for your project.</div></div>
+        <div class="quality-controls"><button class="small-button" id="clearQuality">Clear measurements</button><span><i class="legend-dot user-dot"></i> user measurement</span><span><i class="legend-dot reference-dot"></i> reference target</span><span><i class="legend-dot standard-dot"></i> specification</span></div>
+        <div class="quality-table-wrap"><table class="quality-table"><thead><tr><th>Parameter</th><th>Experimental<br /><small>USER DATA</small></th><th>Reference</th><th>Specification / method</th><th>Status</th></tr></thead><tbody id="qualityTableBody"></tbody></table></div>
+        <div class="quality-index"><div><p class="eyebrow">OPTIONAL COMPLIANCE INDEX</p><h3>BIODIESEL QUALITY INDEX</h3><p id="qualityCoverage">No experimental quality values entered.</p><button id="showScoreMethod" class="text-button">How is this score calculated? <span>+</span></button></div><div class="score-display" id="scoreDisplay"><strong id="qualityScore">—</strong><span>/ 100</span><em id="qualityScoreLabel">Awaiting measurements</em></div></div>
+        <div class="score-method hidden" id="scoreMethod"><b>Scoring method</b><p>Only entered measurements are scored. An in-spec parameter receives 100. For a maximum limit, the score is <em>min(100, limit / measured × 100)</em>; for a minimum, <em>min(100, measured / limit × 100)</em>; an acceptable range is 100 inside the range and declines with distance outside it. The index is the unweighted mean of available parameter scores, and its coverage is shown alongside it. It is a transparent educational summary, not certification.</p></div>
+      </section>
+
+      <section id="analysis" class="section application-section analysis-section">
+        <div class="section-heading"><div><p class="eyebrow">05 / ANALYTICAL GRAPH DASHBOARD</p><h2>Explore the data without inventing it</h2><p>Quality charts use entered measurements; run-history charts use only simulations you explicitly trigger in this browser.</p></div></div>
+        <div class="chart-controls"><label>Graph type<select id="chartType"><option value="bar">Bar comparison</option><option value="line">Line graph</option><option value="scatter">Scatter plot</option><option value="radar">Radar chart</option></select></label><label>Analytical comparison<select id="chartDataset"><option value="quality">Experimental vs reference / specification</option><option value="profile">Biodiesel Quality Profile (normalized)</option><option value="fameViscosity">FAME content vs kinematic viscosity</option><option value="fameGlycerol">FAME content vs total glycerol</option><option value="conditionsYield">Reaction condition vs biodiesel yield</option><option value="ratioYield">Alcohol-to-oil ratio vs yield</option></select></label><button id="exportChart" class="small-button">Export PNG graph</button></div>
+        <div class="chart-grid"><div class="chart-shell"><div class="chart-heading"><div><h3 id="chartTitle">Experimental value vs reference value</h3><p id="chartSubhead">Enter a measurement to create a comparison.</p></div><span class="tag calculated" id="chartDataTag">NO DATA</span></div><div id="chartArea" class="chart-area" aria-live="polite"></div><div id="chartLegend" class="chart-legend"></div></div><aside class="statistics-panel"><p class="eyebrow">ANALYTICS</p><h3>Data diagnostics</h3><dl id="statistics"><div><dt>Data points</dt><dd>0</dd></div><div><dt>Mean</dt><dd>—</dd></div><div><dt>Std. deviation</dt><dd>—</dd></div><div><dt>Regression</dt><dd>—</dd></div><div><dt>R²</dt><dd>—</dd></div></dl><p id="statsNote">Regression appears only when at least two relevant user-generated runs or measurements are available.</p></aside></div>
+      </section>
+
+      <section id="diagnostics" class="section application-section diagnostics-section">
+        <div class="section-heading"><div><p class="eyebrow">06 / PROCESS DIAGNOSTICS</p><h2>See likely process risks</h2><p>These are conditional troubleshooting prompts, not root-cause findings or operating instructions.</p></div></div>
+        <div id="diagnosticCards" class="diagnostic-grid"></div>
+      </section>
+
+      <section id="learn" class="section learn-section">
+        <div class="section-heading"><div><p class="eyebrow">LAB NOTES / EDUCATION</p><h2>Understanding biodiesel</h2><p>A compact reference layer for a project demonstration.</p></div></div>
+        <div class="learn-grid">
+          <article><span>01</span><h3>What is biodiesel?</h3><p>A fuel composed principally of fatty-acid alkyl esters, commonly FAME when methanol is used.</p></article><article><span>02</span><h3>Transesterification</h3><p>Triglycerides react with an alcohol, usually in the presence of a catalyst, to form esters and glycerol.</p></article><article><span>03</span><h3>Why FFA matters</h3><p>Free fatty acids can consume base and promote soap formation, complicating phase separation.</p></article><article><span>04</span><h3>Why quality matters</h3><p>Fuel properties such as viscosity, residual alcohol, glycerol and water influence safety, performance and handling.</p></article><article><span>05</span><h3>Biodiesel vs diesel</h3><p>Biodiesel can offer renewable carbon and improved lubricity; cold-flow behavior and compatibility need assessment.</p></article><article><span>06</span><h3>What affects yield?</h3><p>Alcohol ratio, catalyst, moisture, FFA, mixing, temperature, time and separation all influence observed recovery.</p></article>
+        </div>
+      </section>
+
+      <section class="safety-strip"><div class="safety-symbol">!</div><div><p class="eyebrow">LABORATORY SAFETY</p><h3>Methanol is toxic and flammable. Base catalysts are corrosive.</h3><p>Use approved institutional SOPs, appropriate PPE and engineering controls such as a fume hood. Manage spills and chemical waste through approved procedures; this educational tool does not provide handling instructions.</p></div></section>
+
+      <section id="report" class="section report-section">
+        <div><p class="eyebrow">07 / PROJECT REPORT</p><h2>Package the current analysis</h2><p>Generate a printable report of the current inputs, calculations, entered measurements, diagnostics and the active graph.</p></div>
+        <div class="report-actions"><button id="generateReport" class="button button-primary">Generate project report <span>↗</span></button><button id="exportCsv" class="button button-ghost">Export CSV</button></div>
+      </section>
+    </main>
+
+    <footer><span>BD•LAB / EDUCATIONAL PROCESS SIMULATOR</span><span>Values labelled <b>estimated</b> require experimental validation.</span></footer>
+    <div id="toast" class="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
