@@ -163,5 +163,22 @@
     <footer><span>BD•LAB / EDUCATIONAL PROCESS SIMULATOR</span><span>Values labelled <b>estimated</b> require experimental validation.</span></footer>
     <div id="toast" class="toast" role="status"></div>
     <script src="app.js"></script>
-  </body>
+  
+  <div id="authOverlay" class="auth-overlay" aria-hidden="false">
+    <div class="auth-card">
+      <div class="auth-brand">BD<span>•</span>LAB</div>
+      <p class="eyebrow">PRIVATE WORKSPACE</p>
+      <h2 id="authTitle">Sign in to BD•LAB</h2>
+      <p id="authSubtitle">Create a local project account to keep this browser session separate from other users.</p>
+      <form id="authForm">
+        <label>Email <input id="authEmail" type="email" autocomplete="username" required placeholder="you@example.com"></label>
+        <label>Password <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters"></label>
+        <button class="run-button" type="submit"><span>→</span> <span id="authSubmitLabel">SIGN IN</span></button>
+      </form>
+      <p id="authMessage" class="auth-message" role="status"></p>
+      <button id="authModeToggle" class="text-button" type="button">Create a new account</button>
+      <small class="auth-notice">Demo authentication: credentials are stored locally in this browser. This does not provide server-side security.</small>
+    </div>
+  </div>
+</body>
 </html>
