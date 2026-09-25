@@ -387,86 +387,6 @@
   }
 
 
-  const AUTH_KEYS = { account: 'bdlab_local_account_v1', session: 'bdlab_local_session_v1' };
-
-  async function hashCredential(value) {
-    const data = new TextEncoder().encode(value);
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
-  }
-
-  function getLocalAccount() {
-    try { return JSON.parse(localStorage.getItem(AUTH_KEYS.account) || 'null'); } catch { return null; }
-  }
-
-  function getSession() {
-    try { return JSON.parse(sessionStorage.getItem(AUTH_KEYS.session) || 'null'); } catch { return null; }
-  }
-
-  function setAuthMessage(message) { $('#authMessage').textContent = message; }
-
-  function showAuthenticatedState(session) {
-    $('#authOverlay').classList.add('hidden');
-    $('#authOverlay').setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('auth-locked');
-    let sessionBox = $('.user-session');
-    if (!sessionBox) {
-      sessionBox = document.createElement('div');
-      sessionBox.className = 'user-session';
-      $('.header-status').after(sessionBox);
-    }
-    sessionBox.innerHTML = '<small>Signed in as ' + session.email.replace(/[<>&"]/g, '') + '</small><button class="logout-button" type="button">Log out</button>';
-    $('.logout-button').addEventListener('click', () => {
-      sessionStorage.removeItem(AUTH_KEYS.session);
-      location.reload();
-    });
-  }
-
-  function showAuthState() {
-    const session = getSession();
-    const account = getLocalAccount();
-    if (session && account && session.email === account.email) {
-      showAuthenticatedState(session);
-    } else {
-      $('#authOverlay').classList.remove('hidden');
-      document.body.classList.add('auth-locked');
-    }
-  }
-
-  function bindAuth() {
-    const form = $('#authForm');
-    const toggle = $('#authModeToggle');
-    let signupMode = false;
-    toggle.addEventListener('click', () => {
-      signupMode = !signupMode;
-      $('#authTitle').textContent = signupMode ? 'Create BD•LAB account' : 'Sign in to BD•LAB';
-      $('#authSubtitle').textContent = signupMode ? 'Your account stays on this browser and is not sent to a server.' : 'Sign in to your local project workspace.';
-      $('#authSubmitLabel').textContent = signupMode ? 'CREATE ACCOUNT' : 'SIGN IN';
-      toggle.textContent = signupMode ? 'I already have an account' : 'Create a new account';
-      setAuthMessage('');
-    });
-    form.addEventListener('submit', async event => {
-      event.preventDefault();
-      const email = $('#authEmail').value.trim().toLowerCase();
-      const password = $('#authPassword').value;
-      if (!email || password.length < 6) return setAuthMessage('Use a valid email and a password with at least 6 characters.');
-      const hash = await hashCredential(password);
-      if (signupMode) {
-        const existing = getLocalAccount();
-        if (existing && existing.email !== email) return setAuthMessage('A different local account already exists in this browser.');
-        localStorage.setItem(AUTH_KEYS.account, JSON.stringify({ email, passwordHash: hash, createdAt: new Date().toISOString() }));
-        sessionStorage.setItem(AUTH_KEYS.session, JSON.stringify({ email, signedInAt: new Date().toISOString() }));
-        showAuthenticatedState({ email });
-        return;
-      }
-      const account = getLocalAccount();
-      if (!account || account.email !== email || account.passwordHash !== hash) return setAuthMessage('Incorrect email or password for this browser.');
-      sessionStorage.setItem(AUTH_KEYS.session, JSON.stringify({ email, signedInAt: new Date().toISOString() }));
-      showAuthenticatedState({ email });
-    });
-    showAuthState();
-  }
-
   function bind() {
     renderQualityTable();
     $('#simulationForm').addEventListener('submit', event => { event.preventDefault(); const c = calculate(inputs()); state.lastCalc = c; setPreview(c); updateValidation(c); simulate(c); });
@@ -485,7 +405,6 @@
   }
 
   function init() {
-    bindAuth();
     bind();
     const c = calculate(inputs()); state.lastCalc = c; setPreview(c); updateValidation(c); renderDiagnostics(c, currentQuality()); renderChart();
   }
