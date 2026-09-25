@@ -249,163 +249,98 @@
     $('#diagnosticCards').innerHTML = risks.slice(0, 4).map(risk => `<article class="diagnostic-card ${risk.level}"><span class="diagnostic-icon">${risk.icon}</span><h3>${risk.title}</h3><p>${risk.text}</p><ul>${risk.causes.map(cause => `<li>${cause}</li>`).join('')}</ul></article>`).join('');
   }
 
+  function selectedQualityKey() {
+    const select = $('#chartParameter');
+    const entered = QUALITY.filter(item => currentQuality()[item.key] !== null);
+    if (select && select.value) return select.value;
+    return entered[0]?.key || QUALITY[0].key;
+  }
+
+  function syncChartParameterOptions() {
+    const wrap = $('#chartParameterWrap'), select = $('#chartParameter');
+    if (!wrap || !select) return;
+    const key = selectedQualityKey();
+    select.innerHTML = '<option value="density">Density — kg/m³ @ 15°C</option><option value="viscosity">Kinematic viscosity — mm²/s @ 40°C</option><option value="methanol">Methanol content — mass %</option><option value="acid">Acid value — mg KOH/g</option><option value="freeGlycerol">Free glycerol — mass %</option><option value="totalGlycerol">Total glycerol — mass %</option><option value="fame">Ester / FAME content — mass %</option><option value="water">Water / moisture — mg/kg</option><option value="flash">Flash point — °C</option>';
+    select.value = key;
+    wrap.style.display = $('#chartDataset').value === 'singleQuality' ? '' : 'none';
+  }
+
+  function syncChartTypeOptions() {
+    const dataset = $('#chartDataset').value, type = $('#chartType');
+    const allowed = { singleQuality:['bar'], qualityProfile:['bar','radar'], fameViscosity:['scatter','line','bar'], fameGlycerol:['scatter','line','bar'], conditionsYield:['line','scatter','bar'], ratioYield:['line','scatter','bar'] }[dataset] || ['bar'];
+    [...type.options].forEach(option => option.disabled = !allowed.includes(option.value));
+    if (!allowed.includes(type.value)) type.value = allowed[0];
+    syncChartParameterOptions();
+  }
+
   function chartMeta() {
-    const selection = $('#chartDataset').value;
-    const values = currentQuality();
-    if (selection === 'quality' || selection === 'profile') {
-      const items = QUALITY.filter(item => values[item.key] !== null).map(item => ({ label: item.name, exp: statusFor(item, values[item.key]).score, ref: 100, limit: 100, exact: `${describeNumber(values[item.key])} ${item.unit}; reference ${describeNumber(item.ref)}; spec ${item.spec}` }));
-      return { kind: 'category', title: selection === 'profile' ? 'Biodiesel Quality Profile' : 'Experimental vs reference / specification', subtitle: items.length ? 'Comparison values use parameter-aware 0–100 compliance scoring; exact values remain in the table.' : 'Enter a quality measurement to create a comparison.', items, tag: items.length ? 'USER DATA' : 'NO DATA', note: 'Mixed units are normalized only for cross-parameter visualization. The quality table holds raw values and methods.' };
+    const selection = $('#chartDataset').value, values = currentQuality();
+    if (selection === 'singleQuality') {
+      const item = QUALITY.find(entry => entry.key === selectedQualityKey()) || QUALITY[0], value = values[item.key];
+      return { kind:'single', title:item.name + ': measured value vs specification', subtitle:value === null ? 'Enter the experimental ' + item.name.toLowerCase() + ' value in the quality table to plot the real measurement.' : 'Raw ' + item.unit + ' values are plotted directly — no cross-unit normalization.', tag:value === null ? 'NO DATA' : 'USER DATA', item, value, note:value === null ? 'This graph is waiting for an experimental measurement.' : 'Real user measurement: ' + describeNumber(value) + ' ' + item.unit + '. Reference and specification limits use the same unit.' };
     }
-    if (selection === 'fameViscosity') return singlePair('FAME content vs kinematic viscosity', 'FAME content (mass %)', 'Kinematic viscosity (mm²/s @ 40°C)', values.fame, values.viscosity, 'FAME', 'Viscosity');
-    if (selection === 'fameGlycerol') return singlePair('FAME content vs total glycerol', 'FAME content (mass %)', 'Total glycerol (mass %)', values.fame, values.totalGlycerol, 'FAME', 'Total glycerol');
-    if (selection === 'conditionsYield') return runSeries('Reaction condition vs biodiesel yield', 'Reaction temperature (°C)', state.history.map(run => ({ x: run.temperature, y: run.yield, label: `Run ${run.run}: ${run.temperature}°C, ${fmt(run.yield, 1)}% estimated yield` })));
-    return runSeries('Alcohol-to-oil ratio vs yield', 'Molar alcohol : oil ratio', state.history.map(run => ({ x: run.ratio, y: run.yield, label: `Run ${run.run}: ${fmt(run.ratio, 2)}:1, ${fmt(run.yield, 1)}% estimated yield` })));
-  }
-
-  function singlePair(title, xLabel, yLabel, x, y, xName, yName) {
-    const points = x !== null && y !== null ? [{ x, y, label: `${xName}: ${describeNumber(x)}; ${yName}: ${describeNumber(y)}` }] : [];
-    return { kind: 'xy', title, subtitle: points.length ? 'One user-entered analytical pair. Add distinct run data externally before interpreting a correlation.' : `Enter both ${xName.toLowerCase()} and ${yName.toLowerCase()} measurements to plot this relationship.`, xLabel, yLabel, points, tag: points.length ? 'USER DATA' : 'NO DATA', note: 'Regression requires at least two non-identical data points; one point is shown as a comparison only.' };
-  }
-
-  function runSeries(title, xLabel, points) {
-    return { kind: 'xy', title, subtitle: points.length ? `${points.length} user-triggered model run${points.length === 1 ? '' : 's'} in this browser. These are model estimates, not experimental observations.` : 'Run the simulation with distinct user-selected conditions to add model-run points.', xLabel, yLabel: 'Estimated FAME yield (%)', points, tag: points.length ? 'MODEL RUNS' : 'NO DATA', note: 'Trend statistics are calculated only from user-triggered model runs. They are not experimental regression results.' };
-  }
-
-  function svgEl(name, attrs = {}, text = '') {
-    const el = document.createElementNS('http://www.w3.org/2000/svg', name);
-    Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
-    if (text) el.textContent = text;
-    return el;
-  }
-
-  function makeSvg() {
-    const svg = svgEl('svg', { viewBox: '0 0 760 315', role: 'img', 'aria-label': $('#chartTitle').textContent });
-    return svg;
-  }
-
-  function drawEmpty(message) { $('#chartArea').innerHTML = `<div class="chart-empty"><div><b>No chartable data yet</b>${message}</div></div>`; }
-
-  function drawGrid(svg, { left = 46, top = 18, right = 18, bottom = 38, max = 100, yLabel = 'Value' } = {}) {
-    const width = 760 - left - right, height = 315 - top - bottom;
-    [0, .25, .5, .75, 1].forEach(fraction => {
-      const y = top + height * (1 - fraction);
-      svg.append(svgEl('line', { x1: left, y1: y, x2: left + width, y2: y, class: 'gridline' }));
-      svg.append(svgEl('text', { x: left - 7, y: y + 3, 'text-anchor': 'end', class: 'axis-text' }, fmt(max * fraction, max < 2 ? 2 : 0)));
-    });
-    svg.append(svgEl('line', { x1: left, y1: top, x2: left, y2: top + height, class: 'axis' }));
-    svg.append(svgEl('line', { x1: left, y1: top + height, x2: left + width, y2: top + height, class: 'axis' }));
-    svg.append(svgEl('text', { x: 12, y: 18, class: 'axis-text' }, yLabel));
-    return { left, top, width, height, right, bottom };
-  }
-
-  function addTitle(parent, text) { parent.append(svgEl('title', {}, text)); }
-
-  function drawCategoryChart(meta, type) {
-    const items = meta.items;
-    const svg = makeSvg();
-    const b = drawGrid(svg, { max: 120, yLabel: 'Compliance score' });
-    if (type === 'radar') {
-      const cx = 385, cy = 154, radius = 105, count = items.length;
-      [25, 50, 75, 100].forEach(score => { const r = radius * score / 100; const points = Array.from({ length: count }, (_, index) => { const angle = -Math.PI / 2 + Math.PI * 2 * index / count; return `${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`; }).join(' '); svg.append(svgEl('polygon', { points, fill: 'none', stroke: 'rgba(148,225,216,.17)' })); });
-      const pointsFor = key => items.map((item, index) => { const angle = -Math.PI / 2 + Math.PI * 2 * index / count; const r = radius * item[key] / 100; return `${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`; }).join(' ');
-      items.forEach((item, index) => { const angle = -Math.PI / 2 + Math.PI * 2 * index / count; const x = cx + Math.cos(angle) * (radius + 23); const y = cy + Math.sin(angle) * (radius + 23); svg.append(svgEl('line', { x1: cx, y1: cy, x2: cx + Math.cos(angle) * radius, y2: cy + Math.sin(angle) * radius, class: 'gridline' })); svg.append(svgEl('text', { x, y: y + 3, 'text-anchor': x < cx - 15 ? 'end' : x > cx + 15 ? 'start' : 'middle', class: 'axis-text' }, truncate(item.label, 15))); });
-      const ref = svgEl('polygon', { points: pointsFor('ref'), class: 'chart-radar-ref' }); addTitle(ref, 'Reference / specification target: 100'); svg.append(ref);
-      const exp = svgEl('polygon', { points: pointsFor('exp'), class: 'chart-radar' }); addTitle(exp, 'Experimental compliance profile'); svg.append(exp);
-    } else if (type === 'line' || type === 'scatter') {
-      const margin = b.width / Math.max(items.length, 1);
-      const points = items.map((item, index) => ({ x: b.left + margin * (index + .5), y: b.top + b.height * (1 - item.exp / 120), item }));
-      if (type === 'line' && points.length > 1) svg.append(svgEl('path', { d: `M ${points.map(p => `${p.x} ${p.y}`).join(' L ')}`, class: 'chart-line' }));
-      points.forEach(point => { const dot = svgEl('circle', { cx: point.x, cy: point.y, r: 5, class: 'chart-point' }); addTitle(dot, `${point.item.label}: ${fmt(point.item.exp, 0)}/100 — ${point.item.exact}`); svg.append(dot); svg.append(svgEl('text', { x: point.x, y: b.top + b.height + 16, 'text-anchor': 'middle', class: 'axis-text' }, truncate(point.item.label, 12))); });
-    } else {
-      const groupWidth = b.width / items.length;
-      const barWidth = Math.min(22, groupWidth / 4.8);
-      items.forEach((item, index) => {
-        const baseX = b.left + groupWidth * index + groupWidth / 2 - barWidth * 1.7;
-        [['exp', 'bar-exp', 'Experimental compliance'], ['ref', 'bar-ref', 'Reference target'], ['limit', 'bar-limit', 'Specification target']].forEach(([key, className, label], seriesIndex) => {
-          const value = item[key], height = b.height * value / 120;
-          const rect = svgEl('rect', { x: baseX + seriesIndex * (barWidth + 3), y: b.top + b.height - height, width: barWidth, height, class: className, rx: 2 });
-          addTitle(rect, `${item.label} — ${label}: ${fmt(value, 0)}/100. ${item.exact}`); svg.append(rect);
-        });
-        svg.append(svgEl('text', { x: b.left + groupWidth * (index + .5), y: b.top + b.height + 16, 'text-anchor': 'middle', class: 'axis-text' }, truncate(item.label, 11)));
-      });
+    if (selection === 'qualityProfile') {
+      const items = QUALITY.filter(item => values[item.key] !== null).map(item => ({ label:item.name, exp:statusFor(item, values[item.key]).score, ref:100, exact:describeNumber(values[item.key]) + ' ' + item.unit + '; reference ' + describeNumber(item.ref) + '; specification ' + item.spec }));
+      return { kind:'category', title:'Biodiesel quality compliance profile', subtitle:items.length ? 'Normalized 0–100 compliance view. Raw measurements remain visible in the quality table.' : 'Enter one or more experimental quality measurements to create the profile.', items, tag:items.length ? 'USER DATA' : 'NO DATA', note:'Only this cross-parameter view is normalized because the underlying properties use different physical units.' };
     }
-    $('#chartArea').replaceChildren(svg);
-    $('#chartLegend').innerHTML = '<span class="legend-exp">Experimental / compliance</span><span class="legend-ref">Reference target</span><span class="legend-limit">Specification target</span>';
+    if (selection === 'fameViscosity') return singlePair('FAME content vs kinematic viscosity','FAME content (mass %)','Kinematic viscosity (mm²/s @ 40°C)',values.fame,values.viscosity,'FAME','Viscosity');
+    if (selection === 'fameGlycerol') return singlePair('FAME content vs total glycerol','FAME content (mass %)','Total glycerol (mass %)',values.fame,values.totalGlycerol,'FAME','Total glycerol');
+    if (selection === 'conditionsYield') return runSeries('Reaction temperature vs estimated FAME yield','Reaction temperature (°C)',state.history.map(run => ({x:run.temperature,y:run.yield,label:'Run ' + run.run + ': ' + fmt(run.temperature,1) + ' °C → ' + fmt(run.yield,1) + '% estimated yield'})));
+    return runSeries('Alcohol-to-oil ratio vs estimated FAME yield','Alcohol-to-oil molar ratio',state.history.map(run => ({x:run.ratio,y:run.yield,label:'Run ' + run.run + ': ' + fmt(run.ratio,2) + ':1 → ' + fmt(run.yield,1) + '% estimated yield'})));
   }
 
-  function regress(points) {
-    if (points.length < 2) return null;
-    const meanX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
-    const meanY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
-    const numerator = points.reduce((sum, point) => sum + (point.x - meanX) * (point.y - meanY), 0);
-    const denominator = points.reduce((sum, point) => sum + (point.x - meanX) ** 2, 0);
-    if (denominator === 0) return null;
-    const slope = numerator / denominator, intercept = meanY - slope * meanX;
-    const ssTotal = points.reduce((sum, point) => sum + (point.y - meanY) ** 2, 0);
-    const ssResidual = points.reduce((sum, point) => sum + (point.y - (slope * point.x + intercept)) ** 2, 0);
-    return { slope, intercept, r2: ssTotal ? 1 - ssResidual / ssTotal : null };
+  function singlePair(title,xLabel,yLabel,x,y,xName,yName) {
+    const points = x !== null && y !== null ? [{x,y,label:xName + ': ' + describeNumber(x) + '; ' + yName + ': ' + describeNumber(y)}] : [];
+    return {kind:'xy',title,subtitle:points.length ? 'One real user-entered analytical pair. With one point, regression is intentionally not calculated.' : 'Enter both ' + xName.toLowerCase() + ' and ' + yName.toLowerCase() + ' measurements to plot this relationship.',xLabel,yLabel,points,tag:points.length ? 'USER DATA' : 'NO DATA',note:'The x and y axes use the original measurement units. No normalization is applied.'};
   }
 
-  function drawXYChart(meta, type) {
-    const points = meta.points;
-    const svg = makeSvg();
-    const xs = points.map(p => p.x), ys = points.map(p => p.y);
-    const xMin = Math.min(...xs), xMax = Math.max(...xs), yMinRaw = Math.min(...ys), yMaxRaw = Math.max(...ys);
-    const xPad = xMin === xMax ? Math.max(1, Math.abs(xMin) * .1) : (xMax - xMin) * .15;
-    const yPad = yMinRaw === yMaxRaw ? Math.max(1, Math.abs(yMinRaw) * .1) : (yMaxRaw - yMinRaw) * .18;
-    const xlo = xMin - xPad, xhi = xMax + xPad, ylo = Math.max(0, yMinRaw - yPad), yhi = yMaxRaw + yPad;
-    const b = drawGrid(svg, { max: yhi, yLabel: meta.yLabel });
-    const mapX = x => b.left + ((x - xlo) / (xhi - xlo)) * b.width;
-    const mapY = y => b.top + b.height - ((y - ylo) / Math.max(yhi - ylo, .0001)) * b.height;
-    [0, .25, .5, .75, 1].forEach(fraction => { const x = b.left + b.width * fraction; svg.append(svgEl('text', { x, y: b.top + b.height + 17, 'text-anchor': 'middle', class: 'axis-text' }, fmt(xlo + (xhi - xlo) * fraction, 2))); });
-    svg.append(svgEl('text', { x: b.left + b.width / 2, y: 310, 'text-anchor': 'middle', class: 'axis-text' }, meta.xLabel));
-    const sorted = [...points].sort((a, b) => a.x - b.x);
-    if (type === 'line' && sorted.length > 1) svg.append(svgEl('path', { d: `M ${sorted.map(point => `${mapX(point.x)} ${mapY(point.y)}`).join(' L ')}`, class: 'chart-line' }));
-    if (type === 'bar') {
-      const barWidth = Math.min(38, b.width / points.length * .6);
-      points.forEach(point => { const y = mapY(point.y), rect = svgEl('rect', { x: mapX(point.x) - barWidth / 2, y, width: barWidth, height: b.top + b.height - y, class: 'bar-exp', rx: 3 }); addTitle(rect, point.label); svg.append(rect); });
-    } else if (type === 'radar') {
-      // A run-sequence radar is useful when the dependent variable is yield; x values are presented in the tooltip.
-      const cx = 385, cy = 153, radius = 104, count = points.length;
-      [25, 50, 75, 100].forEach(value => { const r = radius * value / 100; svg.append(svgEl('circle', { cx, cy, r, fill: 'none', stroke: 'rgba(148,225,216,.15)' })); });
-      const polygonPoints = points.map((point, index) => { const angle = -Math.PI / 2 + Math.PI * 2 * index / count; const r = radius * clamp(point.y, 0, 100) / 100; return `${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`; }).join(' ');
-      points.forEach((point, index) => { const angle = -Math.PI / 2 + Math.PI * 2 * index / count; const x = cx + Math.cos(angle) * (radius + 16), y = cy + Math.sin(angle) * (radius + 16); svg.append(svgEl('line', { x1: cx, y1: cy, x2: cx + Math.cos(angle) * radius, y2: cy + Math.sin(angle) * radius, class: 'gridline' })); svg.append(svgEl('text', { x, y, 'text-anchor': 'middle', class: 'axis-text' }, `Run ${index + 1}`)); });
-      const poly = svgEl('polygon', { points: polygonPoints, class: 'chart-radar' }); addTitle(poly, 'Estimated yield profile across user-triggered runs'); svg.append(poly);
-    } else {
-      points.forEach(point => { const dot = svgEl('circle', { cx: mapX(point.x), cy: mapY(point.y), r: 5.5, class: 'chart-point' }); addTitle(dot, point.label); svg.append(dot); });
-    }
-    const regression = regress(points);
-    if (regression && type !== 'radar') {
-      const y1 = regression.slope * xlo + regression.intercept, y2 = regression.slope * xhi + regression.intercept;
-      svg.append(svgEl('path', { d: `M ${mapX(xlo)} ${mapY(y1)} L ${mapX(xhi)} ${mapY(y2)}`, class: 'chart-trend' }));
-    }
-    $('#chartArea').replaceChildren(svg);
-    $('#chartLegend').innerHTML = `<span class="legend-run">${meta.tag === 'MODEL RUNS' ? 'User-triggered model run' : 'User measurement'}</span>${regression ? '<span class="legend-limit">Least-squares trendline</span>' : ''}`;
-    return regression;
+  function runSeries(title,xLabel,points) {
+    return {kind:'xy',title,subtitle:points.length ? points.length + ' user-triggered model run' + (points.length === 1 ? '' : 's') + ' in this browser. These points are model estimates, not experimental observations.' : 'Run the simulation with different conditions to add model-run points to this graph.',xLabel,yLabel:'Estimated FAME yield (%)',points,tag:points.length ? 'MODEL RUNS' : 'NO DATA',note:'Every point comes from a simulation run entered by the user. Regression is descriptive only and is not experimental validation.'};
   }
 
-  function truncate(value, max) { return value.length > max ? `${value.slice(0, max - 1)}…` : value; }
+  function svgEl(name,attrs={},text='') { const el=document.createElementNS('http://www.w3.org/2000/svg',name); Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value)); if(text) el.textContent=text; return el; }
+  function makeSvg(label='Analytical chart') { return svgEl('svg',{viewBox:'0 0 920 390',role:'img','aria-label':label,preserveAspectRatio:'xMidYMid meet'}); }
+  function drawEmpty(message) { $('#chartArea').innerHTML='<div class="chart-empty"><div><b>No chartable data yet</b>'+message+'</div></div>'; }
+  function niceStep(range,target=6) { const raw=Math.abs(range)/Math.max(target,1); if(!Number.isFinite(raw)||raw===0)return 1; const power=10**Math.floor(Math.log10(raw)), normalized=raw/power, factor=normalized<=1?1:normalized<=2?2:normalized<=5?5:10; return factor*power; }
+  function niceTicks(min,max,target=6) { if(!Number.isFinite(min)||!Number.isFinite(max))return []; if(min===max){const pad=Math.abs(min)||1;min-=pad*.5;max+=pad*.5;} const step=niceStep(max-min,target),start=Math.floor(min/step)*step,end=Math.ceil(max/step)*step,ticks=[]; for(let value=start;value<=end+step*.001;value+=step)ticks.push(Number(value.toPrecision(12))); return ticks; }
+  function axisFormat(value,span) { const abs=Math.abs(value); if(abs>=1000)return value.toLocaleString(undefined,{maximumFractionDigits:0}); if(span<.01)return value.toFixed(4); if(span<.1)return value.toFixed(3); if(span<1)return value.toFixed(2); if(span<10)return value.toFixed(2); if(span<100)return value.toFixed(1); return value.toFixed(0); }
+  function drawGrid(svg,{left=76,top=28,right=28,bottom=62,yMin=0,yMax=100,yLabel='Value'}={}) { const width=920-left-right,height=390-top-bottom,ticks=niceTicks(yMin,yMax,6),actualMin=ticks[0]??yMin,actualMax=ticks[ticks.length-1]??yMax,span=actualMax-actualMin||1; ticks.forEach(value=>{const y=top+height-((value-actualMin)/span)*height;svg.append(svgEl('line',{x1:left,y1:y,x2:left+width,y2:y,class:'gridline'}));svg.append(svgEl('text',{x:left-10,y:y+4,'text-anchor':'end',class:'axis-text'},axisFormat(value,span)));}); svg.append(svgEl('line',{x1:left,y1:top,x2:left,y2:top+height,class:'axis'}));svg.append(svgEl('line',{x1:left,y1:top+height,x2:left+width,y2:top+height,class:'axis'}));svg.append(svgEl('text',{x:16,y:top+2,class:'axis-text axis-label'},yLabel));return {left,top,width,height,actualMin,actualMax,span}; }
+  function addTitle(parent,text){parent.append(svgEl('title',{},text));}
 
-  function renderStatistics(meta, regression) {
-    let count = 0, values = [], mean = null, sd = null;
-    if (meta.kind === 'category') { count = meta.items.length; values = meta.items.map(item => item.exp); }
-    else { count = meta.points.length; values = meta.points.map(point => point.y); }
-    if (values.length) { mean = values.reduce((a, b) => a + b, 0) / values.length; sd = values.length > 1 ? Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1)) : null; }
-    $('#statistics').innerHTML = `<div><dt>Data points</dt><dd>${count}</dd></div><div><dt>Mean</dt><dd>${mean === null ? '—' : fmt(mean, 2)}</dd></div><div><dt>Std. deviation</dt><dd>${sd === null ? '—' : fmt(sd, 2)}</dd></div><div><dt>Regression</dt><dd>${regression ? `y = ${fmt(regression.slope, 3)}x ${regression.intercept >= 0 ? '+' : '−'} ${fmt(Math.abs(regression.intercept), 2)}` : '—'}</dd></div><div><dt>R²</dt><dd>${regression && regression.r2 !== null ? fmt(regression.r2, 3) : '—'}</dd></div>`;
-    $('#statsNote').textContent = meta.note;
+  function drawSingleQualityChart(meta) {
+    const item=meta.item,value=meta.value;if(value===null){drawEmpty(meta.subtitle);$('#chartLegend').innerHTML='';return;}
+    const targets=[{label:'Measured',value,className:'bar-exp'},{label:'Reference',value:item.ref,className:'bar-ref'}];
+    if(item.type==='range'){targets.push({label:'Lower limit',value:item.min,className:'bar-limit'},{label:'Upper limit',value:item.max,className:'bar-limit'});} else if(item.type==='max'){targets.push({label:'Maximum allowed',value:item.max,className:'bar-limit'});} else {targets.push({label:'Minimum required',value:item.min,className:'bar-limit'});}
+    const rawValues=targets.map(point=>point.value),rawMin=Math.min(...rawValues),rawMax=Math.max(...rawValues),span=rawMax-rawMin||Math.max(Math.abs(rawMax)*.1,1),yMin=rawMin-span*.18,yMax=rawMax+span*.18,svg=makeSvg(item.name+' measured value compared with specification'),b=drawGrid(svg,{yMin,yMax,yLabel:item.unit}),groupWidth=b.width/targets.length,barWidth=Math.min(90,groupWidth*.52),baseY=b.top+b.height,mapY=valuePoint=>b.top+b.height-((valuePoint-b.actualMin)/b.span)*b.height;
+    targets.forEach((point,index)=>{const x=b.left+groupWidth*index+groupWidth/2,y=mapY(point.value),zeroY=mapY(0),barTop=Math.min(y,zeroY),barHeight=Math.max(2,Math.abs(zeroY-y)),rect=svgEl('rect',{x:x-barWidth/2,y:barTop,width:barWidth,height:barHeight,rx:5,class:point.className});addTitle(rect,point.label+': '+describeNumber(point.value)+' '+item.unit);svg.append(rect);svg.append(svgEl('text',{x,y:Math.max(b.top+12,y-9),'text-anchor':'middle',class:'value-label'},describeNumber(point.value)));svg.append(svgEl('text',{x,y:baseY+24,'text-anchor':'middle',class:'axis-text',transform:'rotate(-22 '+x+' '+(baseY+24)+')'},point.label));});
+    svg.append(svgEl('text',{x:b.left+b.width/2,y:382,'text-anchor':'middle',class:'axis-text axis-label'},item.name+' — '+item.unit));$('#chartArea').replaceChildren(svg);$('#chartLegend').innerHTML='<span class="legend-exp">Measured value</span><span class="legend-ref">Reference value</span><span class="legend-limit">Specification limit</span>';
   }
 
-  function renderChart() {
-    const meta = chartMeta(), type = $('#chartType').value;
-    $('#chartTitle').textContent = meta.title;
-    $('#chartSubhead').textContent = meta.subtitle;
-    $('#chartDataTag').textContent = meta.tag;
-    $('#chartDataTag').className = `tag ${meta.tag === 'NO DATA' ? 'calculated' : meta.tag === 'MODEL RUNS' ? 'estimated' : 'user'}`;
-    if ((meta.kind === 'category' && !meta.items.length) || (meta.kind === 'xy' && !meta.points.length)) { drawEmpty(meta.subtitle); renderStatistics(meta, null); $('#chartLegend').innerHTML = ''; return; }
-    const regression = meta.kind === 'category' ? (drawCategoryChart(meta, type), null) : drawXYChart(meta, type);
-    renderStatistics(meta, regression);
+  function drawCategoryChart(meta,type) {
+    const items=meta.items,svg=makeSvg('Biodiesel quality compliance profile'),b=drawGrid(svg,{yMin:0,yMax:100,yLabel:'Compliance score (0–100)'});
+    if(type==='radar'){const cx=460,cy=188,radius=120,count=items.length;[20,40,60,80,100].forEach(score=>{const r=radius*score/100,points=Array.from({length:count},(_,index)=>{const angle=-Math.PI/2+Math.PI*2*index/count;return (cx+Math.cos(angle)*r)+','+(cy+Math.sin(angle)*r);}).join(' ');svg.append(svgEl('polygon',{points,fill:'none',stroke:'rgba(148,225,216,.17)'}));});const pointsFor=key=>items.map((item,index)=>{const angle=-Math.PI/2+Math.PI*2*index/count,r=radius*clamp(item[key],0,100)/100;return (cx+Math.cos(angle)*r)+','+(cy+Math.sin(angle)*r);}).join(' ');items.forEach((item,index)=>{const angle=-Math.PI/2+Math.PI*2*index/count,x=cx+Math.cos(angle)*(radius+25),y=cy+Math.sin(angle)*(radius+25);svg.append(svgEl('line',{x1:cx,y1:cy,x2:cx+Math.cos(angle)*radius,y2:cy+Math.sin(angle)*radius,class:'gridline'}));svg.append(svgEl('text',{x,y:y+4,'text-anchor':x<cx-15?'end':x>cx+15?'start':'middle',class:'axis-text'},truncate(item.label,22)));});const ref=svgEl('polygon',{points:pointsFor('ref'),class:'chart-radar-ref'});addTitle(ref,'Specification target: 100 compliance');svg.append(ref);const exp=svgEl('polygon',{points:pointsFor('exp'),class:'chart-radar'});addTitle(exp,'Experimental compliance profile');svg.append(exp);items.forEach((item,index)=>{const angle=-Math.PI/2+Math.PI*2*index/count,x=cx+Math.cos(angle)*radius*item.exp/100,y=cy+Math.sin(angle)*radius*item.exp/100,dot=svgEl('circle',{cx:x,cy:y,r:4,class:'chart-point'});addTitle(dot,item.label+': '+fmt(item.exp,1)+'/100 — '+item.exact);svg.append(dot);});}
+    else {const groupWidth=b.width/items.length,barWidth=Math.min(54,groupWidth*.48);items.forEach((item,index)=>{const x=b.left+groupWidth*index+groupWidth/2,y=b.top+b.height-(item.exp/100)*b.height,rect=svgEl('rect',{x:x-barWidth/2,y,width:barWidth,height:b.top+b.height-y,rx:5,class:'bar-exp'});addTitle(rect,item.label+': '+fmt(item.exp,1)+'/100. '+item.exact);svg.append(rect);svg.append(svgEl('text',{x,y:Math.max(b.top+12,y-8),'text-anchor':'middle',class:'value-label'},fmt(item.exp,0)));svg.append(svgEl('text',{x,y:b.top+b.height+25,'text-anchor':'middle',class:'axis-text',transform:'rotate(-28 '+x+' '+(b.top+b.height+25)+')'},truncate(item.label,19)));});}
+    $('#chartArea').replaceChildren(svg);$('#chartLegend').innerHTML='<span class="legend-exp">Experimental compliance</span><span class="legend-ref">100 = specification target</span>';
   }
 
+  function regress(points){if(points.length<2)return null;const meanX=points.reduce((sum,point)=>sum+point.x,0)/points.length,meanY=points.reduce((sum,point)=>sum+point.y,0)/points.length,numerator=points.reduce((sum,point)=>sum+(point.x-meanX)*(point.y-meanY),0),denominator=points.reduce((sum,point)=>sum+(point.x-meanX)**2,0);if(denominator===0)return null;const slope=numerator/denominator,intercept=meanY-slope*meanX,ssTotal=points.reduce((sum,point)=>sum+(point.y-meanY)**2,0),ssResidual=points.reduce((sum,point)=>sum+(point.y-(slope*point.x+intercept))**2,0);return {slope,intercept,r2:ssTotal?1-ssResidual/ssTotal:null};}
+
+  function drawXYChart(meta,type){
+    const points=[...meta.points].sort((a,b)=>a.x-b.x),svg=makeSvg(meta.title),xs=points.map(point=>point.x),ys=points.map(point=>point.y);let xMin=Math.min(...xs),xMax=Math.max(...xs),yMin=Math.min(...ys),yMax=Math.max(...ys);
+    if(xMin===xMax){const pad=Math.abs(xMin)*.08||1;xMin-=pad;xMax+=pad;}if(yMin===yMax){const pad=Math.abs(yMin)*.08||1;yMin-=pad;yMax+=pad;}
+    const xSpan=xMax-xMin,ySpan=yMax-yMin,xPad=xSpan*.14,yPad=ySpan*.16,plotXMin=xMin-xPad,plotXMax=xMax+xPad,plotYMin=Math.max(0,yMin-yPad),plotYMax=yMax+yPad,b=drawGrid(svg,{yMin:plotYMin,yMax:plotYMax,yLabel:meta.yLabel}),mapX=x=>b.left+((x-plotXMin)/(plotXMax-plotXMin))*b.width,mapY=y=>b.top+b.height-((y-b.actualMin)/b.span)*b.height;
+    niceTicks(plotXMin,plotXMax,6).forEach(value=>{const x=b.left+((value-plotXMin)/(plotXMax-plotXMin))*b.width;if(x<b.left-1||x>b.left+b.width+1)return;svg.append(svgEl('line',{x1:x,y1:b.top,x2:x,y2:b.top+b.height,class:'gridline vertical-grid'}));svg.append(svgEl('text',{x,y:b.top+b.height+25,'text-anchor':'middle',class:'axis-text'},axisFormat(value,plotXMax-plotXMin)));});
+    svg.append(svgEl('text',{x:b.left+b.width/2,y:382,'text-anchor':'middle',class:'axis-text axis-label'},meta.xLabel));
+    if(type==='bar'){const barWidth=Math.min(58,b.width/points.length*.55);points.forEach(point=>{const x=mapX(point.x),y=mapY(point.y),zeroY=mapY(Math.max(0,b.actualMin)),rect=svgEl('rect',{x:x-barWidth/2,y:Math.min(y,zeroY),width:barWidth,height:Math.max(2,Math.abs(zeroY-y)),rx:5,class:'bar-exp'});addTitle(rect,point.label);svg.append(rect);svg.append(svgEl('text',{x,y:Math.max(b.top+12,y-8),'text-anchor':'middle',class:'value-label'},fmt(point.y,1)+'%'));});}
+    else if(type==='line'){svg.append(svgEl('path',{d:'M '+points.map(point=>mapX(point.x)+' '+mapY(point.y)).join(' L '),class:'chart-line'}));points.forEach(point=>{const dot=svgEl('circle',{cx:mapX(point.x),cy:mapY(point.y),r:5.5,class:'chart-point'});addTitle(dot,point.label);svg.append(dot);});}
+    else {points.forEach(point=>{const dot=svgEl('circle',{cx:mapX(point.x),cy:mapY(point.y),r:6,class:'chart-point'});addTitle(dot,point.label);svg.append(dot);});}
+    const regression=regress(points);if(regression){const y1=regression.slope*plotXMin+regression.intercept,y2=regression.slope*plotXMax+regression.intercept;svg.append(svgEl('path',{d:'M '+mapX(plotXMin)+' '+mapY(y1)+' L '+mapX(plotXMax)+' '+mapY(y2),class:'chart-trend'}));}
+    $('#chartArea').replaceChildren(svg);$('#chartLegend').innerHTML='<span class="legend-run">'+(meta.tag==='MODEL RUNS'?'User-triggered model run':'User measurement')+'</span>'+(regression?'<span class="legend-limit">Least-squares trendline</span>':'');return regression;
+  }
+
+  function truncate(value,max){return value.length>max?value.slice(0,max-1)+'…':value;}
+  function renderStatistics(meta,regression){let count=0,values=[],mean=null,sd=null;if(meta.kind==='category'){count=meta.items.length;values=meta.items.map(item=>item.exp);}else if(meta.kind==='single'){count=meta.value===null?0:1;values=meta.value===null?[]:[meta.value];}else{count=meta.points.length;values=meta.points.map(point=>point.y);}if(values.length){mean=values.reduce((a,b)=>a+b,0)/values.length;sd=values.length>1?Math.sqrt(values.reduce((sum,value)=>sum+(value-mean)**2,0)/(values.length-1)):null;}const unit=meta.kind==='single'?' '+meta.item.unit:meta.kind==='xy'?' '+meta.yLabel:' compliance points';$('#statistics').innerHTML='<div><dt>Data points</dt><dd>'+count+'</dd></div><div><dt>Mean</dt><dd>'+(mean===null?'—':fmt(mean,mean<1?3:2)+unit)+'</dd></div><div><dt>Std. deviation</dt><dd>'+(sd===null?'—':fmt(sd,sd<1?3:2)+unit)+'</dd></div><div><dt>Regression</dt><dd>'+(regression?'y = '+fmt(regression.slope,3)+'x '+(regression.intercept>=0?'+':'−')+' '+fmt(Math.abs(regression.intercept),2):'—')+'</dd></div><div><dt>R²</dt><dd>'+(regression&&regression.r2!==null?fmt(regression.r2,3):'—')+'</dd></div>';$('#statsNote').textContent=meta.note;}
+  function renderChart(){syncChartTypeOptions();const meta=chartMeta(),type=$('#chartType').value;$('#chartTitle').textContent=meta.title;$('#chartSubhead').textContent=meta.subtitle;$('#chartDataTag').textContent=meta.tag;$('#chartDataTag').className='tag '+(meta.tag==='NO DATA'?'calculated':meta.tag==='MODEL RUNS'?'estimated':'user');if((meta.kind==='category'&&!meta.items.length)||(meta.kind==='xy'&&!meta.points.length)||(meta.kind==='single'&&meta.value===null)){drawEmpty(meta.subtitle);renderStatistics(meta,null);$('#chartLegend').innerHTML='';return;}let regression=null;if(meta.kind==='single')drawSingleQualityChart(meta);else if(meta.kind==='category')drawCategoryChart(meta,type);else regression=drawXYChart(meta,type);renderStatistics(meta,regression);}
   function renderEquipment(id) {
     const item = EQUIPMENT[id];
     if (!item) return;
@@ -541,7 +476,7 @@
     $('#toggleAssumptions').addEventListener('click', () => { $('#assumptionBox').classList.toggle('hidden'); $('#toggleAssumptions').textContent = $('#assumptionBox').classList.contains('hidden') ? 'Show model basis' : 'Hide model basis'; });
     $('#showScoreMethod').addEventListener('click', () => { $('#scoreMethod').classList.toggle('hidden'); $('#showScoreMethod').innerHTML = $('#scoreMethod').classList.contains('hidden') ? 'How is this score calculated? <span>+</span>' : 'Hide scoring method <span>−</span>'; });
     $('#clearQuality').addEventListener('click', () => { $$('[data-quality]').forEach(input => { input.value = ''; }); refreshQuality(); showToast('Experimental quality measurements cleared.'); });
-    $('#chartType').addEventListener('change', renderChart); $('#chartDataset').addEventListener('change', renderChart); $('#exportChart').addEventListener('click', exportChartPng);
+    $('#chartType').addEventListener('change', renderChart); $('#chartDataset').addEventListener('change', renderChart); $('#chartParameter').addEventListener('change', renderChart); $('#exportChart').addEventListener('click', exportChartPng);
     $$('.equipment').forEach(button => button.addEventListener('click', () => renderEquipment(button.dataset.equipment)));
     $('#closeEquipment').addEventListener('click', () => { $('#equipmentPanel').classList.remove('open'); $$('.equipment').forEach(button => button.classList.remove('active')); });
     $('#generateReport').addEventListener('click', generateReport); $('#exportCsv').addEventListener('click', exportCsv);
