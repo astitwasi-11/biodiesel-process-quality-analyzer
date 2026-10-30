@@ -66,6 +66,9 @@ Conventional biodiesel production involves more than a single chemical reaction.
 This project establishes a digital framework for examining these interconnected parameters and translating process information into meaningful engineering outputs.
 
 The accompanying web application provides a digital interface for biodiesel process calculations and quality-oriented analysis, including parameters such as density, kinematic viscosity, methanol content, and total glycerol.
+The accompanying web application provides a digital interface for biodiesel process calculations and quality-oriented analysis, including methanol content and total glycerol.
+
+For neural network visualization and live model generation, explore [TokenPrint – Live Neural Network Generation](https://tokenprint.in/app/?mode=generation).
 
 The broader research direction is to extend this framework through process simulation, experimental datasets, statistical modeling, and AI/ML-based predictive analytics.
 
